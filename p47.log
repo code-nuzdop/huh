@@ -1,0 +1,6 @@
+open \\.\Nal          err=2
+open \\.\NAL          err=2
+open \\.\Nal_1_5      err=2
+open \\.\iqvsw64e     err=2
+open \\.\iqvw64e      err=2
+no device

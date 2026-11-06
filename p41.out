@@ -1,0 +1,32 @@
+ntoskrnl=FFFFF80780C00000
+--- case 7 descriptor matrix (tag 110) ---
+cas=07 zero/zero              err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 nt/zero                err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 nt/size                err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 phys/size              err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 outptr/size            err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 count/max600           err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 d120/d124 1000         err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=07 d120=600               err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+--- case 5 (tag 118) ---
+cas=05 zero/zero              err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=05 nt/-, d124=20          err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=05 out,nt,d124=20         err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=05 nt,20,d120=1000        err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=05 phys/size all1000      err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+--- case 4 (tag 118) ---
+cas=04 zero/zero              err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=04 nt/-, d124=20          err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=04 out,nt,d124=20         err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+cas=04 phys/size all1000      err=0 r10=C86A8029 out=CCCC r18=0000000000000000 | map=00000001 
+--- map sweep at phys 0 / 0x1000 ---
+map phys=0 size=1000 -> 00000001 slot=0
+map phys=0 size=10000 -> 00000001 slot=0
+map phys=0 size=100000 -> 00000001 slot=0
+map phys=1000 size=1000 -> 00000001 slot=0
+map phys=1000 size=10000 -> 00000001 slot=0
+map phys=1000 size=100000 -> 00000001 slot=0
+map phys=A0000 size=1000 -> 00000001 slot=0
+map phys=A0000 size=10000 -> 00000001 slot=0
+map phys=A0000 size=100000 -> 00000001 slot=0
+=== p41 done ===

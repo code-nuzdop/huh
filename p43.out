@@ -1,0 +1,19 @@
+ntoskrnl=FFFFF80780C00000
+--- case 0x38 as memcpy ---
+C38 nt->dst    err=0 r10=FFFFF80780C00000 r18=00007FF623D56F50 dst=CCCC 
+C38 nt+1000->dst err=0 r10=FFFFF80780C01000 r18=00007FF623D56F50 dst=CCCC 
+C38 dst->dst2  err=0 r10=00007FF623D56F50 r18=00007FF623D57050 dst=CCCC 
+--- case 0x1B / 0x1C ---
+C1B nt         err=0 r10=00000187B70192F7
+C1B zero       err=0 r10=00000187B70193A9
+C1C nt         err=0 r10=000000000000000A
+C1C zero       err=0 r10=000000000000000A
+--- 0x80862013 slot reads, slot 0 and 1 ---
+S13 slot0    cas=0C tag=18 err=0 r10=00000000
+S13 slot0    cas=0D tag=18 err=0 r10=00000000
+S13 slot1    cas=0C tag=18 err=0 r10=00000000
+S13 slot1    cas=0D tag=18 err=0 r10=00000000
+S13 slot0    cas=0E tag=20 err=0 r10=00000000
+S13 slot0    cas=0F tag=20 err=0 r10=00000000
+S13 slot0    cas=10 tag=20 err=0 r10=00000000
+=== p43 done ===

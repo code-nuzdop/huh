@@ -1,0 +1,39 @@
+ntoskrnl=FFFFF80780C00000 dst=00007FF6C0E96F50
+--- write family (into our own buffer) ---
+WR byte       cas=13 tag=18 err=0 r10=00000000 dst=CCCCCCCC 
+WR word       cas=14 tag=18 err=0 r10=00000000 dst=CCCCCCCC 
+WR dword      cas=15 tag=18 err=0 r10=00000000 dst=CCCCCCCC 
+--- read family back ---
+RD byte       cas=0D tag=10 err=0 r10=00000000
+RD word       cas=0E tag=10 err=0 r10=00000000
+RD dword      cas=0F tag=10 err=0 r10=00000000
+--- 0x80862013 case 8 (tag 110) with varying ctx+10 ---
+R13 p10=0          cas=08 tag=110 err=0 r10=00000000 r118=00000000 | map=00000001 slot=0 
+R13 p10=nt         cas=08 tag=110 err=0 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 p10=1000       cas=08 tag=110 err=0 r10=00001000 r118=00000000 | map=00000001 slot=0 
+--- 0x80862013 other cases x tags ---
+R13 scan           cas=06 tag=008 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=06 tag=018 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=06 tag=020 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=06 tag=028 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=06 tag=110 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=06 tag=120 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=07 tag=008 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=07 tag=018 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=07 tag=020 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=07 tag=028 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=07 tag=110 err=0 r10=80C00000 r118=00000001 | map=00000001 slot=0 
+R13 scan           cas=07 tag=120 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=008 err=0 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=018 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=020 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=028 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=110 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0A tag=120 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=008 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=018 err=0 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=020 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=028 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=110 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+R13 scan           cas=0B tag=120 err=87 r10=80C00000 r118=00000000 | map=00000001 slot=0 
+=== p42 done ===

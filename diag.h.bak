@@ -1,0 +1,126 @@
+#pragma once
+#include "esp.h"
+#include <cstdio>
+#include <algorithm>
+
+inline void HexDump(const char* tag,uintptr_t addr,size_t len){
+    Log(L"--- %hs @ 0x%llX ---",tag,(unsigned long long)addr);
+    std::vector<BYTE> b(len); if(!g_mem->Read(addr,b.data(),len)){Log(L"  (unreadable)");return;}
+    for(size_t i=0;i<len;i+=16){
+        wchar_t line[160]{}; int n=swprintf_s(line,L"  %04zX: ",i);
+        for(size_t j=0;j<16&&i+j<len;j++) n+=swprintf_s(line+n,160-n,L"%02X ",b[i+j]);
+        Log(L"%ls",line);
+    }
+}
+
+inline bool KernelSelfTest(){
+    Log(L"================ KERNEL SELF-TEST ================");
+    if(!g_pid){ Log(L"[selftest] no game process"); return false; }
+
+    KernelTransport* k=new KernelTransport();
+    bool kok=k->Init(g_pid);
+    if(!kok) Log(L"[selftest] KERNEL FAILED at step %d (1=svc 2=dev 3=qsi 4=ntoskrnl 5=exports 6=eproc 7=cr3 8=base 9=hdr)",k->step);
+    else Log(L"[selftest] kernel bring-up OK");
+
+    RpmTransport* rpm=new RpmTransport();
+    bool rok=rpm->Open(g_pid);
+    if(!rok) Log(L"[selftest] RPM open failed");
+
+    if(!kok && !rok){ Log(L"[selftest] BOTH transports failed"); return false; }
+    if(!kok || !rok){
+        Transport* t = kok ? (Transport*)k : (Transport*)rpm;
+        IMAGE_DOS_HEADER d{}; bool ok=t->Read(t->ModuleBase(),&d,sizeof(d));
+        Log(L"[selftest] only %s works; header read=%d mz=%04X", t->label, (int)ok, d.e_magic);
+        return false;
+    }
+
+    const size_t N=0x1000;
+    std::vector<BYTE> a(N),b(N);
+    bool ra=k->Read(k->ModuleBase(),a.data(),N);
+    bool rb=rpm->Read(rpm->ModuleBase(),b.data(),N);
+    Log(L"[selftest] read header: kernel=%d rpm=%d",(int)ra,(int)rb);
+    if(!ra||!rb)return false;
+    int diff=0; for(size_t i=0;i<N;i++) if(a[i]!=b[i])diff++;
+    Log(L"[selftest] byte diff = %d / %zu -> %s",diff,N,diff==0?L"IDENTICAL (kernel correct)":L"MISMATCH");
+    HexDump("kernel read",k->ModuleBase(),64);
+    HexDump("rpm read   ",rpm->ModuleBase(),64);
+
+    LARGE_INTEGER f,t0,t1; QueryPerformanceFrequency(&f);
+    int iters=2000;
+    QueryPerformanceCounter(&t0); for(int i=0;i<iters;i++){uint64_t v;k->Read(k->ModuleBase()+0x1000,&v,8);} QueryPerformanceCounter(&t1);
+    double kus=((double)(t1.QuadPart-t0.QuadPart)/f.QuadPart*1e6)/iters;
+    QueryPerformanceCounter(&t0); for(int i=0;i<iters;i++){uint64_t v;rpm->Read(rpm->ModuleBase()+0x1000,&v,8);} QueryPerformanceCounter(&t1);
+    double rus=((double)(t1.QuadPart-t0.QuadPart)/f.QuadPart*1e6)/iters;
+    Log(L"[selftest] avg read: kernel=%.2f us  rpm=%.2f us",kus,rus);
+    Log(L"==================================================");
+    return diff==0;
+}
+
+inline void DumpOffsets(){
+    Log(L"================ OFFSET DUMP ================");
+    if(!g_mem){ Log(L"no transport"); return; }
+    uintptr_t mb=g_mem->ModuleBase();
+    Log(L"module base=0x%llX size=0x%zX transport=%hs",(unsigned long long)mb,g_mem->ModuleSize(),g_mem->label);
+    uintptr_t gm=ResolveMov(g_cfg.sigGameManager,mb,g_modImage.data(),g_modImage.size());
+    Log(L"GameManager sig=%s -> 0x%llX",gm?L"hit":L"miss",(unsigned long long)gm);
+    if(!gm){ gm=g_mem->Ptr(mb+g_cfg.fallbackGameManager); Log(L"  fallback GM -> 0x%llX",(unsigned long long)gm); }
+    uintptr_t rn=g_mem->Ptr(mb+g_cfg.fallbackRenderer);
+    Log(L"renderer fallback -> 0x%llX",(unsigned long long)rn);
+    uintptr_t el=WalkChain(gm,g_cfg.chainEntityList);
+    uintptr_t vm=WalkChain(rn,g_cfg.chainViewMatrix);
+    uintptr_t lp=WalkChain(rn,g_cfg.chainLocalPlayer);
+    Log(L"entityList=0x%llX viewMatrix=0x%llX localPlayer=0x%llX",
+        (unsigned long long)el,(unsigned long long)vm,(unsigned long long)lp);
+    if(!el){ Log(L"[!] entityList null -- chains/sigs need updating"); return; }
+
+    float mv[16];
+    if(g_mem->Read(vm,mv,sizeof(mv))) Log(L"viewMatrix[0..3]= %.3f %.3f %.3f %.3f",mv[0],mv[1],mv[2],mv[3]);
+
+    uintptr_t first=el-g_cfg.entityListGap;
+    int shown=0;
+    for(int i=0;i<g_cfg.maxEntities&&shown<4;i++){
+        uintptr_t slot=first+(uintptr_t)i*g_cfg.entitySize;
+        uintptr_t hs=WalkChain(slot,g_cfg.chainEntitySlot);
+        if(!hs)continue;
+        vec3 h=g_mem->Rd<vec3>(hs+g_cfg.headPosOffset);
+        if(h.zero()||!h.sane())continue;
+        Log(L"entity[%d] slot=0x%llX head=0x%llX pos=(%.2f,%.2f,%.2f)",i,(unsigned long long)slot,(unsigned long long)hs,h.x,h.y,h.z);
+        HexDump("head struct",hs,0x80);
+        shown++;
+    }
+    if(!shown) Log(L"[!] no valid entities found");
+
+    Log(L"============= BONE DISCOVERY =============");
+    shown=0;
+    for(int i=0;i<g_cfg.maxEntities&&shown<2;i++){
+        uintptr_t slot=first+(uintptr_t)i*g_cfg.entitySize;
+        uintptr_t actor=g_mem->Ptr(slot);
+        if(!actor)continue;
+        uintptr_t hsp=WalkChain(slot,g_cfg.chainEntitySlot);
+        if(!hsp)continue;
+        vec3 h=g_mem->Rd<vec3>(hsp+g_cfg.headPosOffset);
+        if(h.zero())continue;
+        BoneCtx bc;
+        if(!FindSkeleton(actor,bc)){ Log(L"entity[%d] actor=0x%llX: no skeleton component (componentsOffset=0x%llX)",i,(unsigned long long)actor,(unsigned long long)g_cfg.componentsOffset); continue; }
+        Log(L"entity[%d] actor=0x%llX skeletonComp=0x%llX",i,(unsigned long long)actor,(unsigned long long)bc.skelComp);
+        uint64_t arr=g_cfg.boneArrayOffset?g_mem->Ptr(bc.skelComp+g_cfg.boneArrayOffset):DiscoverBoneArray(bc.skelComp);
+        Log(L"  boneArray=0x%llX",(unsigned long long)arr);
+        if(arr){
+            std::vector<std::pair<float,int>> zs;
+            for(int b=0;b<g_cfg.boneScanCount;b++){
+                vec3 p=g_mem->Rd<vec3>(arr+(uint64_t)b*g_cfg.boneStride+g_cfg.bonePosOffset);
+                float f=g_mem->Rd<float>(arr+(uint64_t)b*g_cfg.boneStride+g_cfg.boneFlagOffset);
+                if(f>0.5f&&f<1.5f&&fabsf(p.x)<10&&fabsf(p.y)<10&&fabsf(p.z)<10) zs.push_back({p.z,b});
+            }
+            std::sort(zs.begin(),zs.end(),[](const std::pair<float,int>&a,const std::pair<float,int>&b){return a.first>b.first;});
+            Log(L"  %zu valid bones. top (highest first):",zs.size());
+            for(size_t j=0;j<zs.size()&&j<24;j++){
+                int b=zs[j].second;
+                vec3 p=g_mem->Rd<vec3>(arr+(uint64_t)b*g_cfg.boneStride+g_cfg.bonePosOffset);
+                Log(L"    idx %3d  z=%6.3f  (%.3f,%.3f,%.3f)",b,p.z,p.x,p.y,p.z);
+            }
+        }
+        shown++;
+    }
+    Log(L"==========================================");
+}
